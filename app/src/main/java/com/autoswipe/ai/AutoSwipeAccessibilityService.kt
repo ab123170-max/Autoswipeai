@@ -8,8 +8,8 @@ import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
 
 /**
- * Performs a deliberate upward swipe only after the user presses Start.
- * No screen text, passwords, or personal content are collected.
+ * Sends an upward swipe only after the user explicitly presses Start.
+ * It does not inspect, copy, or store visible screen text or personal content.
  */
 class AutoSwipeAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
@@ -35,12 +35,18 @@ class AutoSwipeAccessibilityService : AccessibilityService() {
             val x = metrics.widthPixels * 0.5f
             val startY = metrics.heightPixels * 0.80f
             val endY = metrics.heightPixels * 0.27f
-            val path = Path().apply {
+            val swipePath = Path().apply {
                 moveTo(x, startY)
                 lineTo(x, endY)
             }
             val gesture = GestureDescription.Builder()
-                .addStroke(GestureDescription.StrokeDescription(path, 0L, SWIPE_DURATION_MS))
+                .addStroke(
+                    GestureDescription.StrokeDescription(
+                        swipePath,
+                        0L,
+                        SWIPE_DURATION_MS
+                    )
+                )
                 .build()
 
             gestureInProgress = true
@@ -49,7 +55,7 @@ class AutoSwipeAccessibilityService : AccessibilityService() {
                 object : GestureResultCallback() {
                     override fun onCompleted(gestureDescription: GestureDescription?) {
                         gestureInProgress = false
-                        if (isRunning) handler.postDelayed(this@objectRunnable(), SWIPE_INTERVAL_MS)
+                        if (isRunning) handler.postDelayed(swipeLoop, SWIPE_INTERVAL_MS)
                     }
 
                     override fun onCancelled(gestureDescription: GestureDescription?) {
@@ -59,6 +65,7 @@ class AutoSwipeAccessibilityService : AccessibilityService() {
                 },
                 handler
             )
+
             if (!accepted) {
                 gestureInProgress = false
                 handler.postDelayed(this, 1500L)
@@ -66,16 +73,13 @@ class AutoSwipeAccessibilityService : AccessibilityService() {
         }
     }
 
-    // A stable reference to the loop for gesture callbacks.
-    private fun objectRunnable(): Runnable = swipeLoop
-
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Events are intentionally not inspected or stored.
+        // Intentionally do not inspect or store accessibility event content.
     }
 
     override fun onInterrupt() {
@@ -104,8 +108,8 @@ class AutoSwipeAccessibilityService : AccessibilityService() {
         private const val SWIPE_DURATION_MS = 380L
         private const val SWIPE_INTERVAL_MS = 5000L
 
-        val COMPONENT_NAME: String
-            get() = "com.autoswipe.ai/com.autoswipe.ai.AutoSwipeAccessibilityService"
+        const val COMPONENT_NAME =
+            "com.autoswipe.ai/com.autoswipe.ai.AutoSwipeAccessibilityService"
 
         private val SUPPORTED_PACKAGES = setOf(
             "com.zhiliaoapp.musically",
