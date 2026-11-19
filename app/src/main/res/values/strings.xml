@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">Performs an upward swipe only when you press Start, and only in supported short-video apps.</string>
+</resources>
