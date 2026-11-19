@@ -107,28 +107,49 @@ class FloatingOverlayService : Service() {
         }
         container.addView(title)
         val status = TextView(this).apply {
-            text = "Ready — Part 1"
+            text = "Ready — 5 second interval"
             textSize = 13f
             setTextColor(AndroidColor.LTGRAY)
             setPadding(0, 0, 0, dp(8))
         }
         container.addView(status)
+
         fun addControl(label: String, action: () -> Unit) {
             val btn = Button(this).apply {
                 text = label
                 setOnClickListener { action() }
             }
-            container.addView(btn, LinearLayout.LayoutParams(dp(170), dp(48)))
+            container.addView(btn, LinearLayout.LayoutParams(dp(190), dp(48)))
         }
-        addControl("Start") { status.text = "Swipe engine will be added in Part 2" }
-        addControl("Pause") { status.text = "Paused" }
+
+        addControl("Start auto-swipe") {
+            if (AutoSwipeAccessibilityService.isConnected()) {
+                AutoSwipeAccessibilityService.startSwiping()
+                status.text = "Running — supported apps only"
+            } else {
+                status.text = "Enable AutoSwipe AI in Accessibility settings first"
+            }
+        }
+        addControl("Pause") {
+            AutoSwipeAccessibilityService.pauseSwiping()
+            status.text = "Paused"
+        }
+        addControl("Stop") {
+            AutoSwipeAccessibilityService.stopSwiping()
+            status.text = "Stopped"
+        }
         addControl("Close panel") { removePanel() }
-        addControl("Stop floating button") { stopSelf() }
+        addControl("Remove floating button") {
+            AutoSwipeAccessibilityService.stopSwiping()
+            stopSelf()
+        }
+
+        // This panel must be touchable so its buttons can receive taps.
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             overlayType(),
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -147,6 +168,7 @@ class FloatingOverlayService : Service() {
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     override fun onDestroy() {
+        AutoSwipeAccessibilityService.stopSwiping()
         removePanel()
         bubble?.let { try { windowManager.removeView(it) } catch (_: Exception) {} }
         bubble = null
