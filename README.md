@@ -1,27 +1,31 @@
-# AutoSwipe AI — Part 1
+# AutoSwipe AI — Part 2
 
-Native Android project built with **Kotlin** and **Jetpack Compose**.
+Native Android application built with Kotlin and Jetpack Compose.
 
-## Part 1 features
-- Android dashboard
-- Overlay permission flow
-- Movable floating **AS** bubble
-- Floating control panel with Start, Pause, Close and Stop controls
+## Part 2 features
+- Android AccessibilityService with gesture capability
+- Floating panel Start, Pause and Stop controls
+- Upward swipe every 5 seconds while explicitly running
+- App allowlist: TikTok, TikTok Lite, Instagram, YouTube and Facebook
+- Touch-enabled floating control panel
 
-> **Important:** Start and Pause are interface previews in Part 1. Automatic swiping is not implemented yet. The swipe engine will be developed in Part 2 using Android AccessibilityService, with explicit user enablement and controls.
+## First-time setup
+1. Install the updated APK.
+2. Open AutoSwipe AI.
+3. Grant **Display over other apps**.
+4. Tap **Open Accessibility settings**.
+5. Find **AutoSwipe AI swipe control** and enable it.
+6. Return to the app and tap **Show floating button**.
+7. Open a supported short-video feed.
+8. Tap the floating **AS** bubble, then **Start auto-swipe**.
+9. Use **Pause** or **Stop** whenever needed.
 
-## Requirements
-- Android Studio with JDK 17
-- Android SDK Platform 36
-- Minimum Android 8.0 (API 26)
-- Target SDK 36
+## Limitations
+- This is a timed swipe (5 seconds), not video-end detection. It may advance before or after a clip finishes.
+- The service checks the active window's app package and only swipes for the listed apps.
+- It does not inspect, copy, or store screen text or personal content.
+- App versions, feed layout, phone manufacturer settings, and Android accessibility behavior can affect reliability.
+- This Part 2 service is not yet a persistent foreground service; some phones may stop it in the background. Background/battery reliability is a later improvement.
 
 ## Build
-1. Clone or download this repository.
-2. Open the repository folder in Android Studio.
-3. Allow Gradle sync.
-4. Install and run on an Android device.
-5. Tap **Grant overlay permission**.
-6. Tap **Show floating button**.
-
-Package: `com.autoswipe.ai`
+Open this project in Android Studio with JDK 17 and Android SDK 36, sync Gradle, then build the debug APK.
