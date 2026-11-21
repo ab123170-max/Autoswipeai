@@ -2,7 +2,7 @@ name: Build AutoSwipe AI APK
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "feature/video-end-detection" ]
   workflow_dispatch:
 
 permissions:
