@@ -2,14 +2,14 @@ name: Build AutoSwipe AI APK
 
 on:
   push:
-    branches: [ "main", "feature/video-end-detection" ]
+    branches: ["main", "feature/video-end-detection"]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build-debug-apk:
+  build-apk:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -26,13 +26,52 @@ jobs:
         with:
           gradle-version: "8.13"
 
-      - name: Build debug APK
+      # Configure all four repository Actions secrets to produce an update-safe,
+      # consistently signed APK. Never commit the keystore or passwords to Git.
+      - name: Decode persistent release keystore
+        if: ${{ secrets.AUTOSWIPE_KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.AUTOSWIPE_KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/autoswipe-release.jks"
+          test -s "$RUNNER_TEMP/autoswipe-release.jks"
+
+      - name: Build signed release APK
+        if: ${{ secrets.AUTOSWIPE_KEYSTORE_BASE64 != '' && secrets.AUTOSWIPE_KEY_ALIAS != '' && secrets.AUTOSWIPE_KEY_PASSWORD != '' && secrets.AUTOSWIPE_STORE_PASSWORD != '' }}
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/autoswipe-release.jks
+          KEY_ALIAS: ${{ secrets.AUTOSWIPE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.AUTOSWIPE_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.AUTOSWIPE_STORE_PASSWORD }}
+        run: |
+          gradle --no-daemon :app:assembleRelease
+          $ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner verify --verbose app/build/outputs/apk/release/app-release-unsigned.apk 2>/dev/null || true
+          gradle --no-daemon :app:signingReport
+
+      - name: Build debug APK (temporary fallback)
+        if: ${{ secrets.AUTOSWIPE_KEYSTORE_BASE64 == '' || secrets.AUTOSWIPE_KEY_ALIAS == '' || secrets.AUTOSWIPE_KEY_PASSWORD == '' || secrets.AUTOSWIPE_STORE_PASSWORD == '' }}
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: Upload APK artifact
+      - name: Upload signed release APK
+        if: ${{ secrets.AUTOSWIPE_KEYSTORE_BASE64 != '' && secrets.AUTOSWIPE_KEY_ALIAS != '' && secrets.AUTOSWIPE_KEY_PASSWORD != '' && secrets.AUTOSWIPE_STORE_PASSWORD != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: AutoSwipeAI-Part2-debug
+          name: AutoSwipeAI-release-signed
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload debug APK (temporary fallback)
+        if: ${{ secrets.AUTOSWIPE_KEYSTORE_BASE64 == '' || secrets.AUTOSWIPE_KEY_ALIAS == '' || secrets.AUTOSWIPE_KEY_PASSWORD == '' || secrets.AUTOSWIPE_STORE_PASSWORD == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoSwipeAI-debug-temporary
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Explain signing setup when secrets are missing
+        if: ${{ secrets.AUTOSWIPE_KEYSTORE_BASE64 == '' || secrets.AUTOSWIPE_KEY_ALIAS == '' || secrets.AUTOSWIPE_KEY_PASSWORD == '' || secrets.AUTOSWIPE_STORE_PASSWORD == '' }}
+        run: |
+          echo "::warning::Persistent signing is not configured. This debug APK may not update an APK signed by a different debug key."
+          echo "Add repository Actions secrets: AUTOSWIPE_KEYSTORE_BASE64, AUTOSWIPE_KEY_ALIAS, AUTOSWIPE_KEY_PASSWORD, AUTOSWIPE_STORE_PASSWORD."
